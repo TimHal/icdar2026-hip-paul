@@ -1,0 +1,78 @@
+# Self-Supervised EMNIST Balanced with DINOv2 ViT-S features (384-dim)
+#
+# Prototype-guided self-supervised assignment on pre-extracted DINO features.
+# True labels are only used for validation metrics.
+#
+# Usage:
+#   conda activate mlresearch
+#   PYTHONPATH=src python src/cli.py fit --config conf/experiment/selfsupervised_emnist_balanced_dino.yaml
+
+seed_everything: 42
+
+trainer:
+  max_epochs: 100
+  accelerator: auto
+  devices: 1
+  precision: 16-mixed
+  log_every_n_steps: 20
+  check_val_every_n_epoch: 1
+  gradient_clip_val: 1.0
+  callbacks:
+    - class_path: core.callbacks.EnableSystemMetricsCallback.EnableSystemMetricsCallback
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: SelfSupervised_EMNIST_Balanced_DINO
+      tracking_uri: http://localhost:8090
+      log_model: true
+
+model:
+  class_path: task.SelfSupervisedAETask.SelfSupervisedAETask
+  init_args:
+    num_classes: 47
+    feature_dim: 384  # DINOv2 ViT-S/14
+    n_components: 16
+    hidden_dims: [32]
+    dropout: 0.05
+    l2_reg: 1.0e-6
+
+    # Assignment settings
+    rer_threshold: 1.0
+    top_n_per_class: 10
+    min_samples_for_training: 5
+
+    # Epoch-based assignment strategy
+    assignment_mode: fixed_k
+    assignments_per_epoch: 250
+    assignment_threshold: 0.9
+
+    # Pruning settings
+    enable_pruning: true
+    pruning_mode: fixed_k
+    prune_per_epoch: 50
+    prune_threshold: 1.2
+
+    # Prototype settings
+    auto_select_prototypes: true
+    prototypes_per_class: 3
+    prototype_selection: random
+
+    # Training settings
+    learning_rate: 0.005
+    warmup_epochs: 3
+
+    # Loss settings
+    use_prototype_anchoring: true
+    prototype_anchor_weight: 0.1
+    use_umap_loss: true
+    umap_loss_weight: 0.1
+
+data:
+  class_path: data.CachedFeatureDatamodule.CachedFeatureDatamodule
+  init_args:
+    cache_dir: /data/thallybu/cache
+    dataset_name: emnist_balanced_dinov2_vits14
+    batch_size: 1024
+    num_workers: 4
+    seed: 42
+    train_val_split: [0.9, 0.1]

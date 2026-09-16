@@ -1,0 +1,61 @@
+# Simple MAE training on EMNIST (balanced split)
+# For handwritten character recognition experiments.
+#
+# Usage:
+#   conda activate mlresearch
+#   PYTHONPATH=src python src/cli.py fit --config conf/experiment/mae_emnist_simple.yaml
+
+seed_everything: 42
+
+trainer:
+  max_epochs: 100
+  accelerator: auto
+  devices: 1
+  precision: 16-mixed
+  log_every_n_steps: 50
+  check_val_every_n_epoch: 5
+  gradient_clip_val: 1.0
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: "MAE_EMNIST"
+      tracking_uri: "http://localhost:8090"
+      log_model: false
+
+model:
+  class_path: task.MAETask.MAETask
+  init_args:
+    learning_rate: 1.0e-4
+    weight_decay: 0.05
+    warmup_epochs: 10
+    min_lr: 1.0e-6
+    log_reconstruction_every: 500
+    model:
+      class_path: mae.mae_model.MaskedAutoencoder
+      init_args:
+        img_size: 64
+        patch_size: 8
+        in_chans: 1
+        embed_dim: 128
+        encoder_depth: 2
+        encoder_heads: 4
+        decoder_embed_dim: 64
+        decoder_depth: 1
+        decoder_heads: 2
+        mlp_ratio: 4.0
+        mask_ratio: 0.85  # Higher masking for characters
+        norm_pix_loss: false
+        use_cls_token: true
+
+data:
+  class_path: data.MultiViewDatamodule.MultiViewDatamodule
+  init_args:
+    dataset_name: "EMNIST"
+    root_dir: "./data"
+    img_size: 64
+    num_views: 1
+    batch_size: 128
+    num_workers: 4
+    split: "balanced"  # 47 classes
+    persistent_workers: true
+    pin_memory: true

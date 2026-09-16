@@ -1,0 +1,67 @@
+seed_everything: 0
+trainer:
+  max_epochs: 100
+  accelerator: auto
+  devices: 1
+  precision: 16-mixed
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 1
+  gradient_clip_val: 1.0
+  callbacks:
+  - class_path: core.callbacks.EnableSystemMetricsCallback.EnableSystemMetricsCallback
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: SelfSupervised_RERC_Font_Prototype_Ablation
+      tracking_uri: http://localhost:8090
+      log_model: true
+model:
+  class_path: task.SelfSupervisedAETask.SelfSupervisedAETask
+  init_args:
+    num_classes: 47
+    feature_dim: 784
+    n_components: 12
+    dropout: 0.060100280021198146
+    l2_reg: 1.0e-06
+    rer_threshold: 1.0
+    top_n_per_class: 10
+    min_samples_for_training: 5
+    assignment_mode: fixed_k
+    assignment_threshold: 0.8
+    enable_pruning: true
+    pruning_mode: fixed_k
+    prune_threshold: 1.2
+    auto_select_prototypes: true
+    prototypes_per_class: 3
+    prototype_selection: random
+    learning_rate: 0.004033618795504522
+    warmup_epochs: 2
+    use_prototype_anchoring: true
+    prototype_anchor_weight: 0.46908662221321074
+    use_umap_loss: false
+    autoencoder_class: ShallowConvAutoencoder
+    autoencoder_kwargs:
+      image_shape:
+      - 1
+      - 28
+      - 28
+      conv_channels:
+      - 8
+    assignments_per_epoch: 100
+    prune_per_epoch: 25
+data:
+  class_path: data.TorchvisionDatamodule
+  init_args:
+    dataset_name: EMNIST
+    root_dir: /data/thallybu/datasets/EMNIST
+    emnist_split: balanced
+    img_mode: L
+    batch_size: 1024
+    num_workers: 4
+    seed: 0
+    train_val_split:
+    - 0.9
+    - 0.1
+    flatten: true
+    raw_pixels: true
+    pin_memory: false

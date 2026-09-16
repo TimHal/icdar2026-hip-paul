@@ -1,0 +1,82 @@
+# Self-Supervised Class-wise Autoencoder Training on MNIST
+#
+# This configuration trains autoencoders in a fully unsupervised manner:
+# - Prototypes are automatically selected from training data (1 random sample per class)
+# - Samples are assigned to classes based on minimum reconstruction error
+# - True labels are only used for validation metrics
+#
+# Usage:
+#   conda activate mlresearch
+#   PYTHONPATH=src python src/cli.py fit --config conf/experiment/selfsupervised_mnist.yaml
+#
+# Note: Prototypes are auto-selected by default. To provide custom prototypes,
+# set auto_select_prototypes=false and use set_prototype_provider() before training.
+
+seed_everything: 0
+
+trainer:
+  max_epochs: 100
+  accelerator: auto
+  devices: 1
+  precision: 16
+  log_every_n_steps: 20
+  check_val_every_n_epoch: 1
+  gradient_clip_val: 1.0
+  callbacks:
+    - class_path: core.callbacks.EnableSystemMetricsCallback.EnableSystemMetricsCallback 
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: "SelfSupervised_MNIST_Mini"
+      tracking_uri: "http://localhost:8090"
+      log_model: true
+
+
+model:
+  class_path: task.SelfSupervisedAETask.SelfSupervisedAETask
+  init_args:
+    num_classes: 10
+    feature_dim: 384  # DINOv2 ViT-S/14
+    n_components: 10
+    hidden_dims: [16]
+    dropout: 0.05
+    l2_reg: 1.0e-6
+
+    # Assignment settings (legacy, still used for fallback)
+    rer_threshold: 1.0           # Max RER for assignment
+    top_n_per_class: 10         # Top samples for refinement
+    min_samples_for_training: 5  # Min samples to train AE
+
+    # Epoch-based assignment strategy
+    assignment_mode: "threshold"   # "fixed_k" or "threshold"
+    assignments_per_epoch: 50    # K samples per class per epoch (fixed_k mode)
+    assignment_threshold: 0.8    # RER threshold for assignment (threshold mode)
+
+    # Pruning settings (optional, applied before new assignments)
+    enable_pruning: true        # Enable/disable pruning
+    pruning_mode: "threshold"    # "fixed_k" or "threshold"
+    prune_per_epoch: 50           # Worst K to remove per class (fixed_k mode)
+    prune_threshold: 1.2         # Remove if RER > threshold
+
+    # Prototype settings
+    auto_select_prototypes: true  # Auto-select prototypes from data
+    prototypes_per_class: 3       # Number of prototypes per class
+    prototype_selection: "random" # Selection strategy: random, first, centroid
+
+    # Training settings
+    learning_rate: 0.0001
+    warmup_epochs: 2            # Start assigning immediately
+
+    # Loss settings
+    use_prototype_anchoring: true
+    prototype_anchor_weight: 0.2
+    use_umap_loss: true
+    umap_loss_weight: 0.2
+
+data:
+  class_path: data.CachedFeatureDatamodule.CachedFeatureDatamodule
+  init_args:
+    cache_dir: "/data/thallybu/cache"
+    dataset_name: "mnist_dinov2_vits14"
+    batch_size: 1024
+    num_workers: 4

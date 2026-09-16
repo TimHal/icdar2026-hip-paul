@@ -1,0 +1,72 @@
+# Simple single-view MAE training on MNIST
+# This is the minimal configuration for training an MAE encoder.
+#
+# Usage:
+#   conda activate mlresearch
+#   PYTHONPATH=src python src/cli.py fit --config conf/experiment/mae_mnist_simple.yaml
+#
+# To override settings:
+#   --trainer.max_epochs=200 --model.init_args.learning_rate=5e-4
+
+seed_everything: 42
+
+trainer:
+  max_epochs: 100
+  accelerator: auto
+  devices: 1
+  precision: 16-mixed
+  log_every_n_steps: 50
+  check_val_every_n_epoch: 5
+  gradient_clip_val: 1.0
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: "MAE_MNIST"
+      tracking_uri: "http://localhost:8090"
+      log_model: false
+
+model:
+  class_path: task.MAETask.MAETask
+  init_args:
+    learning_rate: 1.0e-4
+    weight_decay: 0.05
+    warmup_epochs: 10
+    min_lr: 1.0e-6
+    log_reconstruction_every: 500
+    model:
+      class_path: mae.mae_model.MaskedAutoencoder
+      init_args:
+        # Image settings
+        img_size: 64
+        patch_size: 8
+        in_chans: 1
+
+        # Encoder (small)
+        embed_dim: 128
+        encoder_depth: 2
+        encoder_heads: 4
+
+        # Decoder (minimal)
+        decoder_embed_dim: 64
+        decoder_depth: 1
+        decoder_heads: 2
+
+        # Training
+        mlp_ratio: 4.0
+        mask_ratio: 0.75
+        norm_pix_loss: false
+        drop_rate: 0.0
+        attn_drop_rate: 0.0
+        use_cls_token: true
+
+data:
+  class_path: data.MultiViewDatamodule.MultiViewDatamodule
+  init_args:
+    dataset_name: "MNIST"
+    root_dir: "./data"
+    img_size: 64
+    num_views: 1  # Single view for simple training
+    batch_size: 128
+    num_workers: 4
+    persistent_workers: true
+    pin_memory: true

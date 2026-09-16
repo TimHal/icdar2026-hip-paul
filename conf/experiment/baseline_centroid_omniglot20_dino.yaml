@@ -1,0 +1,46 @@
+# Nearest Centroid Baseline on MNIST (DINOv2 features)
+#
+# Uses randomly selected prototypes as centroids (no training).
+# Run multiple times with different seeds and average results.
+#
+# Usage:
+#   conda activate mlresearch
+#   PYTHONPATH=src python src/cli.py fit --config conf/experiment/baseline_centroid_mnist_dino.yaml
+#
+# Override prototypes per class:
+#   ... --model.init_args.prototypes_per_class=5
+#
+# Use external prototypes:
+#   ... --model.init_args.prototype_source=path/to/prototypes.pth
+
+seed_everything: 0
+
+trainer:
+  max_epochs: 1
+  accelerator: auto
+  devices: 1
+  precision: 32
+  log_every_n_steps: 1
+  check_val_every_n_epoch: 1
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: "Baseline_NearestCentroid_OMNIGLOT20_DINO"
+      tracking_uri: "http://localhost:8090"
+      log_model: false
+
+model:
+  class_path: baseline.BaselineTask.NearestCentroidTask
+  init_args:
+    num_classes: 20
+    feature_dim: 384  # DINOv2 ViT-S/14
+    prototypes_per_class: 3
+    prototype_selection: "random"
+
+data:
+  class_path: data.CachedFeatureDatamodule.CachedFeatureDatamodule
+  init_args:
+    cache_dir: "/data/thallybu/cache"
+    dataset_name: "omniglot20_dinov2_vits14"
+    batch_size: 1024
+    num_workers: 4

@@ -1,0 +1,67 @@
+seed_everything: 42
+trainer:
+  max_epochs: 75
+  accelerator: auto
+  devices: 1
+  precision: 16-mixed
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 1
+  gradient_clip_val: 1.0
+  callbacks:
+  - class_path: core.callbacks.EnableSystemMetricsCallback.EnableSystemMetricsCallback
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: SelfSupervised_OMNIGLOT50_Conv
+      tracking_uri: http://localhost:8090
+      log_model: true
+model:
+  class_path: task.SelfSupervisedAETask.SelfSupervisedAETask
+  init_args:
+    num_classes: 50
+    feature_dim: 4096
+    n_components: 20
+    dropout: 0.11390754739856865
+    l2_reg: 1.0e-06
+    rer_threshold: 1.0
+    top_n_per_class: 10
+    min_samples_for_training: 3
+    assignment_mode: fixed_k
+    assignment_threshold: 0.85
+    enable_pruning: true
+    pruning_mode: threshold
+    prune_threshold: 1.4262119581227697
+    auto_select_prototypes: true
+    prototypes_per_class: 3
+    prototype_selection: random
+    learning_rate: 0.0006234442165434193
+    warmup_epochs: 5
+    use_prototype_anchoring: true
+    prototype_anchor_weight: 0.1704241196393701
+    use_umap_loss: false
+    autoencoder_class: ShallowConvAutoencoder
+    autoencoder_kwargs:
+      image_shape:
+      - 1
+      - 64
+      - 64
+      conv_channels:
+      - 16
+      - 32
+    assignments_per_epoch: 25
+    umap_loss_weight: 0.11329807881585154
+data:
+  class_path: data.TorchvisionDatamodule
+  init_args:
+    dataset_name: OMNIGLOT50
+    root_dir: /data/thallybu/datasets/custom/26ICDAR-RERC
+    img_mode: L
+    batch_size: 1024
+    num_workers: 2
+    seed: 42
+    train_val_split:
+    - 0.9
+    - 0.1
+    flatten: true
+    raw_pixels: true
+    pin_memory: false

@@ -1,0 +1,73 @@
+# EMNIST Digits with Shallow Convolutional Autoencoder (raw pixels)
+#
+# Uses raw 28x28 grayscale images flattened to 784-dim vectors.
+# Trains K=10 shallow convolutional autoencoders (one per digit class).
+#
+# Usage:
+#   conda activate mlresearch
+#   PYTHONPATH=src python src/cli.py fit --config conf/experiment/emnist_digits_conv.yaml
+
+seed_everything: 42
+
+trainer:
+  max_epochs: 50
+  accelerator: auto
+  devices: 1
+  precision: 32
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 1
+  gradient_clip_val: 1.0
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.EarlyStopping
+      init_args:
+        monitor: val/loss
+        min_delta: 0.0001
+        patience: 10
+        mode: min
+        verbose: true
+    - class_path: lightning.pytorch.callbacks.LearningRateMonitor
+      init_args:
+        logging_interval: step
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: ClasswiseAE_EMNIST_Digits_Conv
+      tracking_uri: http://localhost:8090
+      save_dir: ./mlruns
+      log_model: false
+
+model:
+  class_path: task.ClasswiseAETask
+  init_args:
+    num_classes: 10
+    feature_dim: 784  # 28*28*1 for grayscale EMNIST
+    n_components: 16  # Bottleneck dimension
+    dropout: 0.01
+    l2_reg: 1.0e-6
+    learning_rate: 0.001
+    use_umap_loss: false  # Disable UMAP loss for raw pixels
+    autoencoder_class: ShallowConvAutoencoder
+    autoencoder_kwargs:
+      image_shape:
+        - 1
+        - 28
+        - 28
+      conv_channels:
+        - 16
+        - 32
+
+data:
+  class_path: data.TorchvisionDatamodule
+  init_args:
+    dataset_name: EMNIST
+    root_dir: /data/thallybu/datasets/EMNIST
+    emnist_split: digits
+    img_mode: L
+    batch_size: 128
+    num_workers: 4
+    seed: 42
+    train_val_split:
+      - 0.9
+      - 0.1
+    flatten: true
+    raw_pixels: true

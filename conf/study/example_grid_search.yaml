@@ -1,0 +1,53 @@
+# Grid search study — Optuna replacement for hydra sweeps
+#
+# Uses GridSampler to exhaustively run every combination of parameters.
+# All search_space params MUST be categorical (explicit value lists).
+# Total trials = product of all choice counts (params + groups).
+#
+# This example produces 3 × 2 × 2 × 2 = 24 trials:
+#   3 hidden_dims × 2 learning_rates × 2 n_components × 2 assignment groups
+#
+# Usage:
+#   PYTHONPATH=src python src/cli.py study \
+#     --config conf/experiment/mnist_dino_simple.yaml \
+#     --study_config conf/study/example_grid_search.yaml
+
+study:
+  name: "mnist_dino_grid"
+  direction: minimize
+  metric: "val/loss"
+  n_trials: 24               # should match total grid size
+  storage_dir: "./sweeps"
+  sampler: GridSampler        # exhaustive grid search
+  pruner:
+    type: NopPruner           # no pruning — run every combination to completion
+  early_stopping:
+    patience: 10
+
+# All params must be categorical for GridSampler.
+# This is equivalent to the hydra sweep "params" section.
+search_space:
+  model.init_args.hidden_dims:
+    type: categorical
+    choices:
+      - [8]
+      - [16]
+      - [128]
+
+  model.init_args.learning_rate:
+    type: categorical
+    choices: [0.0001, 0.001]
+
+  model.init_args.n_components:
+    type: categorical
+    choices: [10, 30]
+
+# Groups: atomic multi-param choices (equivalent to hydra sweep "groups").
+# Each group is one dimension in the cartesian product.
+# Within a choice, all keys change together.
+groups:
+  # Assignment strategy: fixed_k vs threshold
+  - - model.init_args.umap_loss_weight: 0.05
+      model.init_args.dropout: 0.0
+    - model.init_args.umap_loss_weight: 0.15
+      model.init_args.dropout: 0.1

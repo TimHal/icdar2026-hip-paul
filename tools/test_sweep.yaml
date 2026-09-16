@@ -1,0 +1,23 @@
+# Test sweep for mae_omniglot_simple.yaml
+#
+# Produces 2 × 2 × 2 = 8 configs:
+#   2 learning rates
+#   × 2 max_epochs values
+#   × 2 decoder configurations (embed_dim/depth/heads stay together)
+
+output_dir: /tmp/sweeper_test
+
+# Independent params: cartesian-producted with each other and with groups.
+params:
+  model.init_args.learning_rate: [1.0e-4, 3.0e-4]
+  trainer.max_epochs: [50, 100]
+
+# Groups: each group is ONE atomic dimension.
+# Within a choice, all keys change together and are never mixed with other choices.
+groups:
+  - - model.init_args.model.init_args.decoder_embed_dim: 128
+      model.init_args.model.init_args.decoder_depth: 2
+      model.init_args.model.init_args.decoder_heads: 2
+    - model.init_args.model.init_args.decoder_embed_dim: 64
+      model.init_args.model.init_args.decoder_depth: 1
+      model.init_args.model.init_args.decoder_heads: 1

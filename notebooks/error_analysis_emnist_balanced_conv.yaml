@@ -1,0 +1,144 @@
+# lightning.pytorch==2.6.1
+seed_everything: 5
+trainer:
+  accelerator: auto
+  strategy: auto
+  devices: 1
+  num_nodes: 1
+  precision: 32
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: SelfSupervised_RERC_FINAL_TEST_UNIFIED
+      run_name: ssl_emnist_balanced_conv-5
+      tracking_uri: http://localhost:8090
+      tags: null
+      save_dir: ./mlruns
+      log_model: true
+      prefix: ''
+      artifact_location: null
+      run_id: null
+      synchronous: null
+  callbacks:
+  - class_path: core.callbacks.EnableSystemMetricsCallback.EnableSystemMetricsCallback
+    init_args:
+      sampling_interval: 10
+  - class_path: lightning.pytorch.callbacks.LearningRateMonitor
+    init_args:
+      logging_interval: step
+      log_momentum: false
+      log_weight_decay: false
+  - class_path: lightning.pytorch.callbacks.LearningRateMonitor
+    init_args:
+      logging_interval: step
+  fast_dev_run: false
+  max_epochs: 100
+  min_epochs: null
+  max_steps: -1
+  min_steps: null
+  max_time: null
+  limit_train_batches: null
+  limit_val_batches: null
+  limit_test_batches: null
+  limit_predict_batches: null
+  overfit_batches: 0.0
+  val_check_interval: null
+  check_val_every_n_epoch: 1
+  num_sanity_val_steps: null
+  log_every_n_steps: 10
+  enable_checkpointing: null
+  enable_progress_bar: null
+  enable_model_summary: null
+  accumulate_grad_batches: 1
+  gradient_clip_val: 1.0
+  gradient_clip_algorithm: null
+  deterministic: null
+  benchmark: null
+  inference_mode: true
+  use_distributed_sampler: true
+  profiler: null
+  detect_anomaly: false
+  barebones: false
+  plugins: null
+  sync_batchnorm: false
+  reload_dataloaders_every_n_epochs: 0
+  default_root_dir: null
+  enable_autolog_hparams: true
+  model_registry: null
+model:
+  class_path: task.SelfSupervisedAETask.SelfSupervisedAETask
+  init_args:
+    num_classes: 47
+    feature_dim: 784
+    n_components: 12
+    hidden_dims: null
+    dropout: 0.060100280021198146
+    l2_reg: 1.0e-06
+    rer_threshold: 1.0
+    top_n_per_class: 10
+    min_samples_for_training: 5
+    assignment_mode: fixed_k
+    assignments_per_epoch: 100
+    assignment_threshold: 0.8
+    enable_pruning: true
+    pruning_mode: fixed_k
+    prune_per_epoch: 25
+    prune_threshold: 1.2
+    auto_select_prototypes: true
+    prototypes_per_class: 5
+    prototype_selection: random
+    prototype_source: null
+    prototype_img_mode: L
+    anneal_assignment_threshold: false
+    anneal_threshold_epochs: null
+    learning_rate: 0.004033618795504522
+    warmup_epochs: 2
+    use_cosine_lr: false
+    cosine_lr_min: 1.0e-06
+    cosine_lr_warmup_epochs: 0
+    use_prototype_anchoring: true
+    prototype_anchor_weight: 0.46908662221321074
+    use_umap_loss: false
+    umap_loss_weight: 0.05
+    umap_min_dist: 0.1
+    autoencoder_class: ShallowConvAutoencoder
+    autoencoder_kwargs:
+      image_shape:
+      - 1
+      - 28
+      - 28
+      conv_channels:
+      - 8
+data:
+  class_path: data.TorchvisionDatamodule
+  init_args:
+    dataset_name: EMNIST
+    root_dir: /data/thallybu/datasets/EMNIST
+    img_size:
+    - 224
+    - 224
+    img_mode: L
+    batch_size: 1024
+    num_workers: 4
+    seed: 0
+    train_val_split:
+    - 0.9
+    - 0.1
+    emnist_split: balanced
+    norm_mean: null
+    norm_std: null
+    flatten: true
+    raw_pixels: true
+    pin_memory: false
+checkpoint_dir: null
+checkpoint_monitor: val/loss
+checkpoint_mode: min
+early_stopping: false
+early_stopping_patience: 10
+experiment_name: null
+run_id: null
+optimizer: null
+lr_scheduler: null
+ckpt_path: /home/thallybu/mlartifacts/54/fbf2d66c2c3e48eeaeec053e75ff0206/artifacts/epoch=99-step=10000/epoch=99-step=10000.ckpt
+verbose: true
+weights_only: null

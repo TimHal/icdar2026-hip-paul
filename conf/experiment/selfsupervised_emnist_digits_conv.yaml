@@ -1,0 +1,93 @@
+# Self-Supervised EMNIST Digits with Shallow Convolutional Autoencoder (raw pixels)
+#
+# Uses raw 28x28 grayscale images flattened to 784-dim vectors.
+# Trains K=10 shallow convolutional autoencoders with prototype-guided assignment.
+# True labels are only used for validation metrics.
+#
+# Usage:
+#   conda activate mlresearch
+#   PYTHONPATH=src python src/cli.py fit --config conf/experiment/selfsupervised_emnist_digits_conv.yaml
+
+seed_everything: 42
+
+trainer:
+  max_epochs: 75
+  accelerator: auto
+  devices: 1
+  precision: 16-mixed
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 1
+  gradient_clip_val: 1.0
+  callbacks:
+    - class_path: core.callbacks.EnableSystemMetricsCallback.EnableSystemMetricsCallback
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: SelfSupervised_EMNIST_Digits_Conv
+      tracking_uri: http://localhost:8090
+      log_model: true
+
+model:
+  class_path: task.SelfSupervisedAETask.SelfSupervisedAETask
+  init_args:
+    num_classes: 10
+    feature_dim: 784  # 28*28*1 for grayscale EMNIST
+    n_components: 16
+    dropout: 0.01
+    l2_reg: 1.0e-6
+
+    # Assignment settings
+    rer_threshold: 1.0
+    top_n_per_class: 10
+    min_samples_for_training: 5
+
+    # Epoch-based assignment strategy
+    assignment_mode: threshold
+    assignment_threshold: 0.8
+
+    # Pruning settings
+    enable_pruning: true
+    pruning_mode: threshold
+    prune_threshold: 1.2
+
+    # Prototype settings
+    auto_select_prototypes: true
+    prototypes_per_class: 3
+    prototype_selection: random
+
+    # Training settings
+    learning_rate: 0.001
+    warmup_epochs: 2
+
+    # Loss settings
+    use_prototype_anchoring: true
+    prototype_anchor_weight: 0.2
+    use_umap_loss: true
+    umap_loss_weight: 0.05
+
+    # Convolutional autoencoder
+    autoencoder_class: ShallowConvAutoencoder
+    autoencoder_kwargs:
+      image_shape:
+        - 1
+        - 28
+        - 28
+      conv_channels:
+        - 8
+        - 16
+
+data:
+  class_path: data.TorchvisionDatamodule
+  init_args:
+    dataset_name: EMNIST
+    root_dir: /data/thallybu/datasets/EMNIST
+    emnist_split: digits
+    img_mode: L
+    batch_size: 2048
+    num_workers: 4
+    seed: 42
+    train_val_split:
+      - 0.9
+      - 0.1
+    flatten: true
+    raw_pixels: true

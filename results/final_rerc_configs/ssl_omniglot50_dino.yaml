@@ -1,0 +1,57 @@
+seed_everything: 42
+trainer:
+  max_epochs: 100
+  accelerator: auto
+  devices: 1
+  precision: 16-mixed
+  log_every_n_steps: 20
+  check_val_every_n_epoch: 1
+  gradient_clip_val: 1.0
+  callbacks:
+  - class_path: core.callbacks.EnableSystemMetricsCallback.EnableSystemMetricsCallback
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: SelfSupervised_OMNIGLOT50_DINO
+      tracking_uri: http://localhost:8090
+      log_model: true
+model:
+  class_path: task.SelfSupervisedAETask.SelfSupervisedAETask
+  init_args:
+    num_classes: 50
+    feature_dim: 384
+    n_components: 25
+    hidden_dims:
+    - 128
+    dropout: 0.07735515214527479
+    l2_reg: 1.0e-06
+    rer_threshold: 1.0
+    top_n_per_class: 10
+    min_samples_for_training: 3
+    assignment_mode: threshold
+    assignments_per_epoch: 250
+    assignment_threshold: 0.7792721278734192
+    enable_pruning: true
+    pruning_mode: fixed_k
+    prune_per_epoch: 100
+    prune_threshold: 1.2
+    auto_select_prototypes: true
+    prototypes_per_class: 5
+    prototype_selection: random
+    learning_rate: 0.00249489351503387
+    warmup_epochs: 0
+    use_prototype_anchoring: true
+    prototype_anchor_weight: 0.17445251800854794
+    use_umap_loss: true
+    umap_loss_weight: 0.18065901725487835
+data:
+  class_path: data.CachedFeatureDatamodule.CachedFeatureDatamodule
+  init_args:
+    cache_dir: /data/thallybu/cache
+    dataset_name: omniglot50_dinov2_vits14
+    batch_size: 1024
+    num_workers: 4
+    seed: 42
+    train_val_split:
+    - 0.9
+    - 0.1

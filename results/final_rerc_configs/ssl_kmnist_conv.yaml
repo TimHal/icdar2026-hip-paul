@@ -1,0 +1,69 @@
+seed_everything: 42
+trainer:
+  max_epochs: 75
+  accelerator: auto
+  devices: 1
+  precision: 16-mixed
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 1
+  gradient_clip_val: 1.0
+  callbacks:
+  - class_path: core.callbacks.EnableSystemMetricsCallback.EnableSystemMetricsCallback
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: SelfSupervised_KMNIST_Conv
+      tracking_uri: http://localhost:8090
+      log_model: true
+model:
+  class_path: task.SelfSupervisedAETask.SelfSupervisedAETask
+  init_args:
+    num_classes: 10
+    feature_dim: 784
+    n_components: 19
+    dropout: 0.023799043151937614
+    l2_reg: 1.0e-06
+    rer_threshold: 1.0
+    top_n_per_class: 10
+    min_samples_for_training: 5
+    assignment_mode: fixed_k
+    assignment_threshold: 0.5698020880721045
+    enable_pruning: true
+    pruning_mode: fixed_k
+    prune_threshold: 1.522433718052074
+    auto_select_prototypes: true
+    prototypes_per_class: 4
+    prototype_selection: random
+    learning_rate: 0.001248512855031774
+    warmup_epochs: 2
+    use_prototype_anchoring: true
+    prototype_anchor_weight: 0.14400356318543742
+    use_umap_loss: false
+    autoencoder_class: ShallowConvAutoencoder
+    autoencoder_kwargs:
+      image_shape:
+      - 1
+      - 28
+      - 28
+      conv_channels:
+      - 8
+    assignments_per_epoch: 500
+    prune_per_epoch: 50
+    umap_loss_weight: 0.026987525970333662
+data:
+  class_path: data.TorchvisionDatamodule
+  init_args:
+    dataset_name: KMNIST
+    root_dir: /data/thallybu/datasets
+    img_mode: L
+    img_size:
+    - 28
+    - 28
+    batch_size: 1024
+    num_workers: 4
+    seed: 42
+    train_val_split:
+    - 0.9
+    - 0.1
+    flatten: true
+    raw_pixels: true

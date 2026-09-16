@@ -1,0 +1,60 @@
+# KMNIST with CLIP ViT-L/14 features (paper default)
+# Hyperparameters aligned with Marks et al. 2024 paper
+#
+# KMNIST (Kuzushiji-MNIST): 10 classes of cursive Japanese (Hiragana) characters
+# Same 28x28 grayscale format as MNIST, but more challenging.
+#
+# Note: Paper uses clip-vit-large-patch14 (768-dim) as default.
+#
+# Usage:
+#   conda activate mlresearch
+#   PYTHONPATH=src python src/cli.py fit --config conf/experiment/kmnist_clip.yaml
+
+seed_everything: 42
+
+trainer:
+  max_epochs: 20  # Paper default (with early stopping)
+  accelerator: auto
+  devices: 1
+  precision: 32
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 1
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.EarlyStopping
+      init_args:
+        monitor: "val/loss"
+        min_delta: 0.005  # Paper: 5e-3
+        patience: 5       # Paper default
+        mode: "min"
+        verbose: true
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: "ClasswiseAE_KMNIST_CLIP"
+      tracking_uri: "file:///data/thallybu/mlops/mlflow"
+      log_model: true
+
+model:
+  class_path: task.ClasswiseAETask
+  init_args:
+    num_classes: 10
+    feature_dim: 768  # CLIP ViT-L/14 (paper default)
+    n_components: 10       # Paper default
+    hidden_dims: [256]     # Paper default
+    dropout: 0.01          # Paper default
+    l2_reg: 1e-6           # Paper default
+    learning_rate: 0.1     # Paper default
+    umap_loss_weight: 0.05 # Paper: 20:1 MSE:UMAP ratio
+    use_umap_loss: true
+    umap_n_neighbors: 40   # Paper default
+    umap_min_dist: 0.1
+
+data:
+  class_path: data.CachedFeatureDatamodule
+  init_args:
+    cache_dir: "/data/thallybu/cache"
+    dataset_name: "kmnist_clip_vitl14"
+    batch_size: 64
+    num_workers: 4
+    seed: 42
+    train_val_split: [0.9, 0.1]

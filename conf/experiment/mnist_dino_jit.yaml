@@ -1,0 +1,64 @@
+# MNIST with DINOv2 ViT-S — just-in-time feature extraction
+# Hyperparameters aligned with Marks et al. 2024 paper
+#
+# Features are computed on-the-fly instead of from a cache.
+# Slower but doesn't require pre-computed feature caches.
+#
+# Usage:
+#   conda activate mlresearch
+#   PYTHONPATH=src python src/cli.py fit --config conf/experiment/mnist_dino_jit.yaml
+
+seed_everything: 42
+
+trainer:
+  max_epochs: 20  # Paper default (with early stopping)
+  accelerator: auto
+  devices: 1
+  precision: 32
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 1
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.EarlyStopping
+      init_args:
+        monitor: "val/loss"
+        min_delta: 0.005  # Paper: 5e-3
+        patience: 5       # Paper default
+        mode: "min"
+        verbose: true
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: "ClasswiseAE_MNIST_DINO_JIT"
+      tracking_uri: "http://localhost:8090"
+      log_model: true
+
+model:
+  class_path: task.JITClasswiseAETask
+  init_args:
+    feature_extractor:
+      class_path: feature_extractors.dino.DINOFeatureExtractor
+      init_args:
+        model_name: dinov2_vits14
+    num_classes: 10
+    n_components: 10       # Paper default
+    hidden_dims: [256]     # Paper default
+    dropout: 0.01          # Paper default
+    l2_reg: 1e-6           # Paper default
+    learning_rate: 0.001     # Paper default (was 0.001)
+    umap_loss_weight: 0.05 # Paper: 20:1 MSE:UMAP ratio
+    use_umap_loss: true
+    umap_n_neighbors: 20   # Paper default (was 15)
+    umap_min_dist: 0.1
+    normalize_features: true
+
+data:
+  class_path: data.TorchvisionDatamodule
+  init_args:
+    dataset_name: MNIST
+    root_dir: "/data/thallybu/datasets"
+    img_size: [224, 224]
+    img_mode: RGB
+    batch_size: 64
+    num_workers: 4
+    seed: 42
+    train_val_split: [0.9, 0.1]

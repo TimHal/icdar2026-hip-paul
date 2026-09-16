@@ -1,0 +1,122 @@
+# Optuna study for Self-Supervised EMNIST Balanced + DINOv2
+#
+# Usage:
+#   conda activate mlresearch
+#   PYTHONPATH=src python src/cli.py study \
+#     --config conf/experiment/selfsupervised_emnist_balanced_dino.yaml \
+#     --study_config conf/study/ssl_emnist_balanced_dino.yaml
+
+study:
+  name: "ssl_emnist_balanced_dino"
+  directions: [maximize]
+  metrics: ["val/accuracy"]
+  storage_dir: "./sweeps"
+  sampler: TPESampler
+  n_trials: 50
+  pruner:
+    type: MedianPruner
+    n_startup_trials: 10
+    n_warmup_steps: 10
+  early_stopping:
+    patience: 10
+
+search_space:
+
+  # ---- Architecture ----
+  model.init_args.hidden_dims:
+    type: categorical
+    choices:
+      - [8]
+      - [16]
+      - [32]
+      - [128]
+      - [128, 64]
+
+  model.init_args.n_components:
+    type: int
+    low: 4
+    high: 32
+
+  # ---- Optimiser ----
+  model.init_args.learning_rate:
+    type: float
+    low: 5.0e-5
+    high: 5.0e-3
+    log: true
+
+  # ---- Assignment strategy ----
+  model.init_args.assignment_mode:
+    type: categorical
+    choices:
+      - fixed_k
+      - threshold
+
+  model.init_args.pruning_mode:
+    type: categorical
+    choices:
+      - fixed_k
+      - threshold
+
+  # fixed_k params
+  model.init_args.assignments_per_epoch:
+    type: categorical
+    choices: [50, 100, 250, 500]
+
+  model.init_args.prune_per_epoch:
+    type: categorical
+    choices: [25, 50, 100]
+
+  # threshold params
+  model.init_args.assignment_threshold:
+    type: float
+    low: 0.4
+    high: 0.9
+
+  model.init_args.prune_threshold:
+    type: float
+    low: 1.1
+    high: 1.6
+
+  # ---- Regularisation ----
+  model.init_args.dropout:
+    type: float
+    low: 0.0
+    high: 0.15
+
+  # ---- Anchoring (always on, weight tuned) ----
+  model.init_args.prototype_anchor_weight:
+    type: float
+    low: 0.05
+    high: 0.5
+
+  # ---- UMAP loss weight ----
+  model.init_args.umap_loss_weight:
+    type: float
+    low: 0.01
+    high: 0.2
+    log: true
+
+  # ---- Prototypes ----
+  model.init_args.prototypes_per_class:
+    type: int
+    low: 1
+    high: 5
+
+  model.init_args.warmup_epochs:
+    type: int
+    low: 0
+    high: 5
+
+conditions:
+  model.init_args.assignments_per_epoch:
+    when: model.init_args.assignment_mode
+    equals: fixed_k
+  model.init_args.prune_per_epoch:
+    when: model.init_args.pruning_mode
+    equals: fixed_k
+  model.init_args.assignment_threshold:
+    when: model.init_args.assignment_mode
+    equals: threshold
+  model.init_args.prune_threshold:
+    when: model.init_args.pruning_mode
+    equals: threshold

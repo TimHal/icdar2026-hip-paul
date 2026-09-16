@@ -1,0 +1,81 @@
+# Multi-view MAE training on MNIST
+# Uses multiple augmented views of each image with independent masking.
+#
+# Usage:
+#   conda activate mlresearch
+#   PYTHONPATH=src python src/cli.py fit --config conf/experiment/mae_mnist_multiview.yaml
+
+seed_everything: 42
+
+trainer:
+  max_epochs: 100
+  accelerator: auto
+  devices: 1
+  precision: 16-mixed
+  log_every_n_steps: 50
+  check_val_every_n_epoch: 5
+  gradient_clip_val: 1.0
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: "MAE_MNIST_MultiView"
+      tracking_uri: "http://localhost:8090"
+      log_model: false
+
+model:
+  class_path: task.MAETask.MAETask
+  init_args:
+    learning_rate: 1.0e-4
+    weight_decay: 0.05
+    warmup_epochs: 10
+    min_lr: 1.0e-6
+    log_reconstruction_every: 500
+    model:
+      class_path: mae.multiview_mae.MultiViewMAE
+      init_args:
+        share_masking: false  # Independent masking per view
+        base_mae:
+          class_path: mae.mae_model.MaskedAutoencoder
+          init_args:
+            # Image settings
+            img_size: 64
+            patch_size: 8
+            in_chans: 1
+
+            # Encoder
+            embed_dim: 128
+            encoder_depth: 2
+            encoder_heads: 4
+
+            # Decoder
+            decoder_embed_dim: 64
+            decoder_depth: 1
+            decoder_heads: 2
+
+            # Training
+            mlp_ratio: 4.0
+            mask_ratio: 0.75
+            norm_pix_loss: false
+            use_cls_token: true
+
+data:
+  class_path: data.MultiViewDatamodule.MultiViewDatamodule
+  init_args:
+    dataset_name: "MNIST"
+    root_dir: "./data"
+    img_size: 64
+    num_views: 2  # Two views per image
+    batch_size: 64  # Smaller batch due to multiple views
+    num_workers: 4
+    persistent_workers: true
+    pin_memory: true
+    augmentation_config:
+      rotation_range: 15.0
+      translate_range: 0.1
+      scale_range: [0.9, 1.1]
+      blur_sigma: [0.1, 2.0]
+      blur_prob: 0.5
+      noise_std: 0.05
+      noise_prob: 0.3
+      brightness_range: 0.1
+      contrast_range: 0.1

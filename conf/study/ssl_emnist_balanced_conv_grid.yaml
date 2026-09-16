@@ -1,0 +1,64 @@
+# Grid search for SSL EMNIST Balanced Conv — replaces tools/ssl_emnist_balanced_conv.yaml
+#
+# Reproduces the exact same cartesian product as the hydra sweep:
+#   3 conv_channels × 2 learning_rates × 3 n_components × 4 assignment groups = 72 trials
+#
+# Usage:
+#   PYTHONPATH=src python src/cli.py study \
+#     --config conf/experiment/selfsupervised_emnist_balanced_conv.yaml \
+#     --study_config conf/study/ssl_emnist_balanced_conv_grid.yaml
+#
+# Parallel (one worker per GPU, Optuna distributes the 72 grid points):
+#   N_GPUS=8
+#   seq 0 $(( N_GPUS - 1 )) | parallel -j "$N_GPUS" \
+#     'CUDA_VISIBLE_DEVICES={} PYTHONPATH=src python src/cli.py study \
+#       --config conf/experiment/selfsupervised_emnist_balanced_conv.yaml \
+#       --study_config conf/study/ssl_emnist_balanced_conv_grid.yaml \
+#       --n_trials 9'
+
+study:
+  name: "ssl_emnist_balanced_conv_grid"
+  direction: maximize
+  metric: "val/accuracy"
+  n_trials: 72               # 3 × 2 × 3 × 4 = 72
+  storage_dir: "./sweeps"
+  sampler: GridSampler
+  pruner:
+    type: NopPruner           # grid search: run every combination
+  early_stopping:
+    patience: 10
+
+search_space:
+  model.init_args.autoencoder_kwargs.conv_channels:
+    type: categorical
+    choices:
+      - [8]
+      - [8, 16]
+      - [16, 32]
+
+  model.init_args.learning_rate:
+    type: categorical
+    choices: [0.0001, 0.001]
+
+  model.init_args.n_components:
+    type: categorical
+    choices: [4, 16, 32]
+
+# Groups: assignment strategy combinations (params that must change together)
+groups:
+  - - model.init_args.assignment_mode: "fixed_k"
+      model.init_args.assignments_per_epoch: 100
+      model.init_args.pruning_mode: "fixed_k"
+      model.init_args.prune_per_epoch: 25
+    - model.init_args.assignment_mode: "fixed_k"
+      model.init_args.assignments_per_epoch: 500
+      model.init_args.pruning_mode: "fixed_k"
+      model.init_args.prune_per_epoch: 100
+    - model.init_args.assignment_mode: "threshold"
+      model.init_args.assignment_threshold: 0.6
+      model.init_args.pruning_mode: "threshold"
+      model.init_args.prune_threshold: 1.4
+    - model.init_args.assignment_mode: "threshold"
+      model.init_args.assignment_threshold: 0.8
+      model.init_args.pruning_mode: "threshold"
+      model.init_args.prune_threshold: 1.2

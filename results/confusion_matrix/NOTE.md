@@ -1,0 +1,1 @@
+These are the confusion matrices on best /test peformance for EMNIST digits and balanced (convolutional). These are the respective best results across the five seeded runs for the data in the table, thats why they are higher than the averages reported earlier. 

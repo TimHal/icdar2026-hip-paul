@@ -1,0 +1,91 @@
+# Simple MAE training on Omniglot (faster, smaller model)
+#
+# Use this for quick experiments or limited GPU memory.
+# For best results, use mae_omniglot_multiview.yaml instead.
+#
+# Usage:
+#   conda activate mlresearch
+#   PYTHONPATH=src python src/cli.py fit --config conf/experiment/mae_omniglot_simple.yaml
+
+seed_everything: 42
+
+trainer:
+  max_epochs: 100
+  accelerator: auto
+  devices: 1
+  precision: 16-mixed
+  log_every_n_steps: 50
+  check_val_every_n_epoch: 5
+  gradient_clip_val: 1.0
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: "val/loss"
+        mode: "min"
+        save_top_k: 1
+        save_last: true
+        filename: "omniglot_mae_simple_{epoch:03d}_{val/loss:.4f}"
+    - class_path: lightning.pytorch.callbacks.EarlyStopping
+      init_args:
+        monitor: "val/loss"
+        patience: 10
+        mode: "min"
+    - class_path: lightning.pytorch.callbacks.LearningRateMonitor
+      init_args:
+        logging_interval: "step"
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: "MAE_Omniglot_Simple"
+      tracking_uri: "http://localhost:8090"
+      log_model: true
+
+model:
+  class_path: task.MAETask.MAETask
+  init_args:
+    learning_rate: 1.0e-4
+    weight_decay: 0.05
+    warmup_epochs: 10
+    min_lr: 1.0e-6
+    log_reconstruction_every: 1000
+    model:
+      class_path: mae.mae_model.MaskedAutoencoder
+      init_args:
+        img_size: 224
+        patch_size: 14
+        in_chans: 1
+
+        embed_dim: 256
+        encoder_depth: 4
+        encoder_heads: 2 
+
+        decoder_embed_dim: 128
+        decoder_depth: 2
+        decoder_heads: 2 
+
+        mlp_ratio: 4.0
+        norm_pix_loss: false
+        use_cls_token: true
+
+data:
+  class_path: data.MultiViewDatamodule.MultiViewDatamodule
+  init_args:
+    dataset_name: "Omniglot"
+    root_dir: "/data/thallybu/datasets/Omniglot"
+    download: false  # Use existing dataset
+    img_size: 224
+    num_views: 1  # Single view for simplicity
+    batch_size: 32
+    num_workers: 4
+    persistent_workers: true
+    pin_memory: true
+    augmentation_config:
+      rotation_range: 20.0  # Omniglot benefits from more rotation
+      translate_range: 0.15
+      scale_range: [0.85, 1.15]
+      blur_sigma: [0.1, 1.5]
+      blur_prob: 0.3
+      noise_std: 0.03
+      noise_prob: 0.2
+      brightness_range: 0.15
+      contrast_range: 0.15

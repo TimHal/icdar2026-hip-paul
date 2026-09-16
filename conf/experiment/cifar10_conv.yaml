@@ -1,0 +1,75 @@
+# CIFAR-10 with Shallow Convolutional Autoencoder (raw pixels, supervised)
+#
+# Uses raw 32x32 RGB images flattened to 3072-dim vectors.
+# Trains K=10 shallow convolutional autoencoders (one per class).
+# Uses true labels for assignment.
+#
+# Usage:
+#   conda activate mlresearch
+#   PYTHONPATH=src python src/cli.py fit --config conf/experiment/cifar10_conv.yaml
+
+seed_everything: 42
+
+trainer:
+  max_epochs: 50
+  accelerator: auto
+  devices: 1
+  precision: 16-mixed
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 1
+  gradient_clip_val: 1.0
+  callbacks:
+    - class_path: core.callbacks.EnableSystemMetricsCallback.EnableSystemMetricsCallback
+    - class_path: lightning.pytorch.callbacks.EarlyStopping
+      init_args:
+        monitor: "val/loss"
+        min_delta: 0.005
+        patience: 5
+        mode: "min"
+        verbose: true
+  logger:
+    class_path: lightning.pytorch.loggers.MLFlowLogger
+    init_args:
+      experiment_name: ClasswiseAE_CIFAR10_Conv
+      tracking_uri: http://localhost:8090
+      log_model: true
+
+model:
+  class_path: task.ClasswiseAETask
+  init_args:
+    num_classes: 10
+    feature_dim: 3072  # 32*32*3 for RGB CIFAR-10
+    n_components: 16
+    dropout: 0.05
+    l2_reg: 1.0e-6
+    learning_rate: 0.001
+    umap_loss_weight: 0.05
+    use_umap_loss: false
+    umap_n_neighbors: 20
+    umap_min_dist: 0.1
+
+    # Convolutional autoencoder
+    autoencoder_class: ShallowConvAutoencoder
+    autoencoder_kwargs:
+      image_shape:
+        - 3
+        - 32
+        - 32
+      conv_channels:
+        - 16
+
+data:
+  class_path: data.TorchvisionDatamodule
+  init_args:
+    dataset_name: CIFAR10
+    root_dir: /data/thallybu/datasets
+    img_mode: RGB
+    batch_size: 512
+    num_workers: 4
+    seed: 42
+    train_val_split:
+      - 0.9
+      - 0.1
+    flatten: true
+    raw_pixels: true
+    pin_memory: false
